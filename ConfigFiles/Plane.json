@@ -1,0 +1,63 @@
+{
+  "AppName": "ZeroZer",
+  "IsTest": true,
+  "Version": "1.0.0",
+  "ExpireDate": "01-01-2024",
+  "ConnectionPoolCount": 5,
+  "SyncListener": {
+    "IP": "localhost",
+    "Port": 8569
+  },
+  "AsyncListener": {
+    "IP": "localhost",
+    "Port": 8570
+  },
+  "MySql": {
+    "Host": "localhost",
+    "Port": 3306,
+    "password": "123456",
+    "Dbname": "MyDb",
+    "Driver": "mysql",
+    "count": 10,
+    "second": 300
+  },
+  "Postgresql": {
+    "Host": "localhost",
+    "Port": 5432,
+    "User": "postgres",
+    "password": "123456",
+    "Dbname": "blue_bank"
+  },
+  "RabbitMQ": {
+    "Host": "localhost",
+    "Port": 5672,
+    "userName": "guest",
+    "password": "guest"
+  },
+  "Kafka": {
+    "Host": "localhost",
+    "Port": 9092,
+    "Topic": "log",
+    "Partition": 0
+  },
+  "Redis": {
+    "Host": "localhost",
+    "Port": 6379,
+    "password": "",
+    "database": 0
+  },
+  "GRPC": [
+    {
+      "IP": "localhost",
+      "Port": 8571
+    },
+    {
+      "IP": "localhost",
+      "Port": 8572
+    },
+    {
+      "IP": "localhost",
+      "Port": 8573
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+version: "3.5"
+services:
+  redis:
+    image: redis:latest
+    restart: always
+    container_name: redis-server
+    ports:
+      - "6379:6379"
+    networks:
+      - dev-network
+  postgresql:
+    image: postgres:latest
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+#      - POSTGRES_DB=postgres
+#      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=123456
+    networks:
+      - dev-network
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: mhthrh@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "900:80"
+    networks:
+      - dev-network
+  message-broker:
+    image: rabbitmq:latest
+    container_name: rabbit-mq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    networks:
+      - dev-network
+networks:
+  dev-network:
+    driver: bridge

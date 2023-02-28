@@ -1,0 +1,43 @@
+syntax="proto3";
+
+option go_package = "bp.go/ProtoUser";
+import "google/protobuf/timestamp.proto";
+
+service Services{
+  rpc CreateUser(UserRequest)returns(Error){}
+  rpc LoginUser(LoginRequest)returns(User){}
+  rpc ExistUser(ExistRequest)returns(ExistResponse){}
+}
+
+
+message UserRequest{
+  string FullName=1;
+  string UserName=2;
+  string PassWord=3;
+  string Email=4;
+}
+
+message Error{
+  string Message=1;
+}
+
+message LoginRequest{
+  string UserName=1;
+    string PassWord=2;
+}
+message User{
+  int32 ID =1;
+  string FullName=2;
+  string UserName=3;
+  string PassWord=4;
+  string Email=5;
+  google.protobuf.Timestamp CreateAt=6;
+  google.protobuf.Timestamp ExpireAt=7;
+}
+message ExistRequest{
+  string UserName=1;
+}
+message ExistResponse{
+  string error=1;
+  int32 count=2;
+}

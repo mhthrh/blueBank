@@ -1,0 +1,20 @@
+syntax="proto3";
+
+option go_package = "bp.go/ProtoGateway";
+
+service GatewayServices{
+  rpc GatewayLogin(GatewayLoginRequest)returns(GatewayLoginResponse){}
+}
+
+message GatewayLoginRequest{
+  string UserName =1;
+  string Password  =2;
+}
+
+message GatewayLoginResponse{
+  string UserName=1;
+  string Password=2;
+  string Ips=3;
+  string GatewayName=4;
+  bool Status=5;
+}
