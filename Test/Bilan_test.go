@@ -21,6 +21,7 @@ func Test_CreateBilan(t *testing.T) {
 func Test_BalanceBilan(t *testing.T) {
 	db := Db.NewDb(cnn)
 	amount, err := db.BalanceBilan(ctx, bilan)
+
 	require.NoError(t, err)
 	require.Equal(t, amount, bilan.Amount)
 }

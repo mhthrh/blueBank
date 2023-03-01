@@ -7,9 +7,12 @@ import (
 	"testing"
 )
 
-func Test_CreateUser(t *testing.T) {
+func createUser() error {
 	db := Db.NewDb(cnn)
-	err := db.Create(ctx, &user)
+	return db.Create(ctx, user)
+}
+func Test_CreateUser(t *testing.T) {
+	err := createUser()
 	require.NoError(t, err)
 }
 

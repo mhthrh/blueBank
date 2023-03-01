@@ -11,7 +11,7 @@ func Test_Redis(t *testing.T) {
 	rndKey := RandomUtil.RandomString(10)
 	rndValue := RandomUtil.RandomString(30)
 
-	client := Redis.Client{Client: RedisClient}
+	client := Redis.Client{Client: redisClient}
 
 	err := client.Set(rndKey, rndValue)
 	require.NoError(t, err)

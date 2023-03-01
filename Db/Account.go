@@ -8,6 +8,9 @@ import (
 )
 
 func (d *dataBase) CreateAccount(ctx context.Context, account Entity.Account) error {
+	if account.Balance != 0 || account.LockAmount != 0 {
+		return fmt.Errorf("just zero amount/lock amount acceted")
+	}
 	count, err := d.ExistAccount(ctx, account)
 	if err != nil {
 		return fmt.Errorf("cannot create account, %w", err)
@@ -15,8 +18,14 @@ func (d *dataBase) CreateAccount(ctx context.Context, account Entity.Account) er
 	if count != 0 {
 		return fmt.Errorf("douplicate account")
 	}
+	var userId int64
+	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select id from public.customers where user_name='%s'", account.CustomerUserName))
+	err = row.Scan(&userId)
+	if err != nil {
+		return fmt.Errorf("cannot find customer")
+	}
 
-	result, err := d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.accounts(customer_id, account_no, balance)VALUES ('%d', '%d', '%d')", account.CustomerId, account.AccountNumber, account.Balance))
+	result, err := d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.accounts(customer_id, account_no, balance,balance_lock)VALUES ('%d', '%d', '%d','%d')", userId, account.AccountNumber, account.Balance, account.LockAmount))
 	if err != nil {
 		return errors.Wrap(err, "cannot insert to db.accounts, ")
 	}
@@ -29,11 +38,9 @@ func (d *dataBase) CreateAccount(ctx context.Context, account Entity.Account) er
 }
 func (d *dataBase) BalanceAccount(ctx context.Context, account Entity.Account) (int64, error) {
 	var balance int64
-	rows, err := d.db.QueryContext(ctx, fmt.Sprintf("select balance FROM public.customers where account_no='%d'", account.AccountNumber))
-	if err != nil {
-		return 0, fmt.Errorf("db error, %w", err)
-	}
-	err = rows.Scan(&balance)
+	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select balance FROM public.accounts where account_no='%d'", account.AccountNumber))
+
+	err := row.Scan(&balance)
 	if err != nil {
 		return 0, fmt.Errorf("db fetch error, %w", err)
 	}

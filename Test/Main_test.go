@@ -15,13 +15,17 @@ import (
 )
 
 var (
-	cnn          *sql.DB
-	user         Entity.Customer
-	login        Entity.CustomerLogin
-	gatewayLogin Entity.GatewayLogin
-	bilan        Entity.Bilan
-	ctx          context.Context
-	RedisClient  *redis.Client
+	cnn           *sql.DB
+	user          Entity.Customer
+	login         Entity.CustomerLogin
+	gatewayLogin  Entity.GatewayLogin
+	bilan         Entity.Bilan
+	account       Entity.Account
+	ctx           context.Context
+	redisClient   *redis.Client
+	username      string
+	password      string
+	accountNumber int64
 )
 
 func init() {
@@ -33,17 +37,18 @@ func init() {
 	if err := cfg.Initialize(); err != nil {
 		log.Fatalf("unable to fill viber, %v", err)
 	}
-	u := RandomUtil.RandomString(10)
-	p := RandomUtil.RandomString(10)
+	username = RandomUtil.RandomString(10)
+	password = RandomUtil.RandomString(10)
+	accountNumber = RandomUtil.RandomInt(10000, 100000)
 	user = Entity.Customer{
 		FullName: RandomUtil.RandomString(10),
-		UserName: u,
-		PassWord: p,
+		UserName: username,
+		PassWord: password,
 		Email:    fmt.Sprintf("%s@gmail.com", RandomUtil.RandomString(10)),
 	}
 	login = Entity.CustomerLogin{
-		UserName: u,
-		PassWord: p,
+		UserName: username,
+		PassWord: password,
 	}
 	gatewayLogin = Entity.GatewayLogin{
 		UserName: "company1",
@@ -67,12 +72,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	RedisClient = redis.NewClient(&redis.Options{
+	redisClient = redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%d", viper.GetString("Redis.Host"), viper.GetInt("Redis.Port")),
 		Password: viper.GetString("Redis.password"),
 		DB:       viper.GetInt("Redis.database"),
 	})
-	_, err = RedisClient.Ping().Result()
+	_, err = redisClient.Ping().Result()
 	if err != nil {
 		_ = cnn.Close()
 		panic(err)
