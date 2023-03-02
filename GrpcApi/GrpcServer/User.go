@@ -24,7 +24,7 @@ func (s *UserServer) CreateUser(ctx context.Context, in *ProtoUser.UserRequest) 
 		fmt.Printf("canot insert to redis, %v\n", err)
 	}
 	db := Db.NewDb(p.Sql)
-	errG := db.Create(ctx, &Entity.Customer{
+	errG := db.Create(ctx, Entity.Customer{
 		FullName: in.FullName,
 		UserName: in.UserName,
 		PassWord: in.PassWord,

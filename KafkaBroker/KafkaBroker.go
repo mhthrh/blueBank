@@ -1,60 +1,87 @@
 package KafkaBroker
 
 import (
-	"github.com/confluentinc/confluent-kafka-go/kafka"
+	"context"
+	"errors"
+	"fmt"
+	"github.com/segmentio/kafka-go"
+	"time"
 )
 
-type KafkaBroker struct {
-	Host     string
-	ClientId string
-	GroupId  string
-}
-type Message struct {
-	Topic    string
-	Key      string
-	Value    string
-	MetaData []byte
+type (
+	Writer struct {
+		Connection *kafka.Writer
+	}
+	Reader struct {
+		connection *kafka.Reader
+	}
+	Message struct {
+		Topic    string
+		Key      string
+		Value    string
+		MetaData []byte
+	}
+)
+
+func NewReader(address []string, topic, groupID string) *Reader {
+	r := kafka.NewReader(kafka.ReaderConfig{
+		Brokers:  address,
+		GroupID:  groupID,
+		Topic:    topic,
+		MinBytes: 10e3, // 10KB
+		MaxBytes: 10e6, // 10MB
+	})
+	return &Reader{connection: r}
+
 }
 
-type Producer struct {
-	*kafka.Producer
+func (r *Reader) Read(ctx context.Context, message chan Message, errChan chan error) {
+
+	for {
+		m, err := r.connection.ReadMessage(ctx)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		message <- Message{
+			Topic:    m.Topic,
+			Key:      string(m.Key),
+			Value:    string(m.Value),
+			MetaData: nil,
+		}
+	}
+}
+func (r *Reader) CloseReader() error {
+	return r.connection.Close()
 }
 
-func NewProducer(k KafkaBroker) (*kafka.Producer, error) {
-	producer, err := kafka.NewProducer(
-		&kafka.ConfigMap{
-			"bootstrap.servers": k.Host,
-			"client.id":         k.ClientId,
-			"acks":              "all",
+func NewWriter(address string) *Writer {
+	return &Writer{
+		Connection: &kafka.Writer{
+			Addr:     kafka.TCP(address),
+			Balancer: &kafka.LeastBytes{},
 		},
-	)
-	return producer, err
+	}
 }
-
-func (p *Producer) Produce11(message Message) error {
-	var delivery chan kafka.Event
-	err := p.Produce(&kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &message.Topic, Partition: kafka.PartitionAny},
-		Key:            []byte(message.Key),
-		Value:          []byte(message.Value)},
-		delivery,
+func (w *Writer) Write(msg ...Message) error {
+	kafka.TCP()
+	var messages []kafka.Message
+	for _, message := range msg {
+		messages = append(messages, kafka.Message{
+			Topic: message.Topic,
+			Key:   []byte(message.Key),
+			Value: []byte(message.Value),
+			Time:  time.Now(),
+		})
+	}
+	err := w.Connection.WriteMessages(context.Background(),
+		messages...,
 	)
 	if err != nil {
-		return err
+		return errors.New(fmt.Sprintf("failed to write messages: %s", err))
 	}
-	result := <-delivery
-	report := result.(*kafka.Message)
-	return report.TopicPartition.Error
-
+	return nil
 }
-
-func NewConsumer(k KafkaBroker) (*kafka.Consumer, error) {
-	consumer, err := kafka.NewConsumer(
-		&kafka.ConfigMap{
-			"bootstrap.servers": k.Host,
-			"group.id":          k.GroupId,
-			"auto.offset.reset": "smallest",
-		},
-	)
-	return consumer, err
+func (w *Writer) CloseWriter() error {
+	return w.Connection.Close()
 }
