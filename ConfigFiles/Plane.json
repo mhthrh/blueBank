@@ -3,7 +3,7 @@
   "IsTest": true,
   "Version": "1.0.0",
   "ExpireDate": "01-01-2024",
-  "ConnectionPoolCount": 5,
+  "ConnectionPoolCount": 100,
   "SyncListener": {
     "IP": "localhost",
     "Port": 8569

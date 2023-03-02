@@ -5,8 +5,11 @@ import (
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 	"github.com/mhthrh/BlueBank/KafkaBroker"
+	"google.golang.org/grpc"
 	"time"
 )
+
+var counter int
 
 type KafkaAddress struct {
 	Ip   string
@@ -14,11 +17,12 @@ type KafkaAddress struct {
 }
 
 type RestSide struct {
+	GrpcAddress     []interface{}
 	RedisConnection RedisConnection
 	Writer          KafkaAddress
 }
 
-func NewRestSide(redis RedisConnection, kafkaWriter KafkaAddress) IConnection {
+func NewRestSide(redis RedisConnection, kafkaWriter KafkaAddress, grpcAddress []interface{}) IConnection {
 	return &RestSide{
 		RedisConnection: RedisConnection{
 			Ip:       redis.Ip,
@@ -26,7 +30,8 @@ func NewRestSide(redis RedisConnection, kafkaWriter KafkaAddress) IConnection {
 			Password: redis.Password,
 			Database: redis.Database,
 		},
-		Writer: kafkaWriter,
+		Writer:      kafkaWriter,
+		GrpcAddress: grpcAddress,
 	}
 }
 
@@ -40,13 +45,21 @@ func (r *RestSide) Fetch() (*Connection, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot connet to redis,%w", err)
 	}
+	address := fmt.Sprintf("%s:%.f", r.GrpcAddress[counter%len(r.GrpcAddress)].(map[string]interface{})["ip"], r.GrpcAddress[counter%len(r.GrpcAddress)].(map[string]interface{})["port"])
+	counter++
+	gConn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(500*time.Millisecond))
+	if err != nil {
+		return nil, fmt.Errorf(fmt.Sprintf("did not connect: %v", err))
+	}
+
 
 	writer := KafkaBroker.NewWriter(fmt.Sprintf("%s:%d", r.Writer.Ip, r.Writer.Port))
 
 	c := Connection{
-		Id:          uuid.New(),
-		Redis:       client,
-		KafkaWriter: *writer,
+		Id:             uuid.New(),
+		GrpcConnection: gConn,
+		Redis:          client,
+		KafkaWriter:    *writer,
 	}
 	return &c, nil
 }

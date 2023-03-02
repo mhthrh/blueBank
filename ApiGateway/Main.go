@@ -36,9 +36,8 @@ func init() {
 	listenerError = make(chan error)
 	osInterrupt = make(chan os.Signal)
 	poolStop = make(chan struct{})
-	pool = make(chan Pool.Connection, poolCount)
 
-	cfg := Config.New("Coded.dat", "json", "ConfigFile")
+	cfg := Config.New("Coded.dat", "json", "./ConfigFiles")
 	if err := cfg.Initialize(); err != nil {
 		log.Fatalf("unable to fill viber, %v", err)
 	}
@@ -50,30 +49,31 @@ func init() {
 	}, Pool.KafkaAddress{
 		Ip:   viper.GetString("Kafka.Host"),
 		Port: viper.GetInt("Kafka.Port"),
-	})
+	}, viper.Get("GRPC").([]interface{}))
 	poolSize = viper.GetInt("ConnectionPoolCount")
 	pool = make(chan Pool.Connection, poolSize)
 }
 func main() {
 	//Connection pool
-	go func() {
-		defer close(poolStop)
-		for {
-			select {
-			case <-poolStop:
-				return
-			default:
-				c, err := rConn.Fetch()
-				if err != nil {
-					fmt.Println("cannot get newAdd connection, ", err)
-					continue
+	for i := 0; i < 100; i++ {
+		go func() {
+			defer close(poolStop)
+			for {
+				select {
+				case <-poolStop:
+					return
+				default:
+					c, err := rConn.Fetch()
+					if err != nil {
+						fmt.Println("cannot get new connection, ", err)
+						continue
+					}
+					pool <- *c
+					fmt.Printf("add connection id %s to pool.\n", c.Id.String())
 				}
-				pool <- *c
-				fmt.Printf("add connection id %s to pool.\n", c.Id.String())
 			}
-		}
-	}()
-
+		}()
+	}
 	View.New(&pool)
 	serverSync := http.Server{
 		Addr:         fmt.Sprintf("%s:%d", "localhost", 8569),
@@ -109,32 +109,33 @@ func main() {
 	case listenerErrorMessage := <-listenerError:
 		fmt.Println(fmt.Sprintf("serverSync will be down, because: %s", listenerErrorMessage.Error()))
 		if err := serverSync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverSync Shutdown: %v", err)
+			fmt.Printf("HTTP serverSync Shutdown: %v\n", err)
 		}
 		if err := serverAsync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverAsync Shutdown: %v", err)
+			fmt.Printf("HTTP serverAsync Shutdown: %v\n", err)
 		}
 	case <-osInterrupt:
 		fmt.Println(fmt.Sprintf("serverSync will be down, because: %s", "got intrrupt"))
 		if err := serverSync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverSync Shutdown: %v", err)
+			fmt.Printf("HTTP serverSync Shutdown: %v\n", err)
 		}
 		if err := serverAsync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverAsync Shutdown: %v", err)
+			fmt.Printf("HTTP serverAsync Shutdown: %v\n", err)
 		}
 	case e := <-listenerError:
 		fmt.Println(fmt.Sprintf("serverSync will be down, because: %s", "got intrrupt"))
 		if err := serverSync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverSync Shutdown: %v", e)
+			fmt.Printf("HTTP serverSync Shutdown: %v\n", e)
 		}
 		if err := serverAsync.Shutdown(context.Background()); err != nil {
-			log.Printf("HTTP serverAsync Shutdown: %v", err)
+			fmt.Printf("HTTP serverAsync Shutdown: %v\n", err)
 		}
-		go func() {
-			poolStop <- struct{}{}
-		}()
 
-		//release connections
-		rConn.Release(&pool)
 	}
+	go func() {
+		poolStop <- struct{}{}
+	}()
+
+	//release connections
+	rConn.Release(&pool)
 }

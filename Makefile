@@ -32,3 +32,6 @@ encrypt_config:
 
 go_test:
 	go test -v -cover ./Test/...
+
+curl_test:
+	cmd /C  curl/Post.bat

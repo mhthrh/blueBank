@@ -2,6 +2,7 @@ package GrpcServer
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/mhthrh/BlueBank/Db"
 	"github.com/mhthrh/BlueBank/Entity"
@@ -19,7 +20,8 @@ func (g GatewayServer) GatewayLogin(ctx context.Context, in *ProtoGateway.Gatewa
 	}()
 
 	client := Redis.Client{Client: p.Redis}
-	err := client.Set(p.Id.String(), "test")
+	byt, _ := json.Marshal(in)
+	err := client.Set(p.Id.String(), string(byt))
 	if err != nil {
 		fmt.Printf("canot insert to redis, %v\n", err)
 	}
@@ -33,12 +35,15 @@ func (g GatewayServer) GatewayLogin(ctx context.Context, in *ProtoGateway.Gatewa
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "", err)
 	}
-	return &ProtoGateway.GatewayLoginResponse{
+	r := &ProtoGateway.GatewayLoginResponse{
 		UserName:    gateway.UserName,
 		Password:    "********",
 		Ips:         gateway.Ips,
 		GatewayName: gateway.GatewayName,
 		Status:      gateway.Status,
-	}, status.Errorf(codes.OK, "")
+	}
+	byt, _ = json.Marshal(r)
+	_ = client.Set(p.Id.String(), string(byt))
+	return r, status.Errorf(codes.OK, "")
 
 }
