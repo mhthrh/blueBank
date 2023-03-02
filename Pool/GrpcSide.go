@@ -9,23 +9,19 @@ import (
 	"time"
 )
 
-type RedisAddress struct {
-	Host string
-	Port string
-}
 type RedisConnection struct {
 	Ip       string
 	Port     int
 	Password string
 	Database int
 }
-type GrpcConnection struct {
+type GrpcSide struct {
 	DbConnection    string
 	RedisConnection RedisConnection
 }
 
-func NewGrpcConnection(db string, redis RedisConnection) IConnection {
-	return &GrpcConnection{
+func NewGrpcSide(db string, redis RedisConnection) IConnection {
+	return &GrpcSide{
 		DbConnection: db,
 		RedisConnection: RedisConnection{
 			Ip:       redis.Ip,
@@ -35,7 +31,7 @@ func NewGrpcConnection(db string, redis RedisConnection) IConnection {
 		},
 	}
 }
-func (g *GrpcConnection) Fetch() (*Connection, error) {
+func (g *GrpcSide) Fetch() (*Connection, error) {
 	cnn, err := sql.Open("postgres", g.DbConnection)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connet to db,%w", err)
@@ -61,7 +57,7 @@ func (g *GrpcConnection) Fetch() (*Connection, error) {
 	return &c, nil
 }
 
-func (g *GrpcConnection) Release(p *chan Connection) []error {
+func (g *GrpcSide) Release(p *chan Connection) []error {
 	var errs []error
 	fmt.Println()
 

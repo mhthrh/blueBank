@@ -54,7 +54,6 @@ func (r *Reader) Read(ctx context.Context, message chan Message, errChan chan er
 func (r *Reader) CloseReader() error {
 	return r.connection.Close()
 }
-
 func NewWriter(address string) *Writer {
 	return &Writer{
 		Connection: &kafka.Writer{

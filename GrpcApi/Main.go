@@ -51,7 +51,7 @@ func init() {
 		"password=%s dbname=%s sslmode=disable",
 		viper.GetString("Postgresql.Host"), viper.GetInt("Postgresql.Port"), viper.GetString("Postgresql.User"), viper.GetString("Postgresql.password"), viper.GetString("Postgresql.Dbname"))
 
-	gConn = Pool.NewGrpcConnection(psqlInfo, Pool.RedisConnection{
+	gConn = Pool.NewGrpcSide(psqlInfo, Pool.RedisConnection{
 		Ip:       viper.GetString("Redis.Host"),
 		Port:     viper.GetInt("Redis.Port"),
 		Password: viper.GetString("Redis.password"),
