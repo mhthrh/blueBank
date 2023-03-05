@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/mhthrh/BlueBank/Config"
 	"github.com/mhthrh/BlueBank/GrpcApi/GrpcServer"
@@ -13,6 +14,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"time"
 )
 
 type server struct {
@@ -62,23 +64,14 @@ func init() {
 }
 func main() {
 	//Connection pool
-	go func() {
-		defer close(poolStop)
-		for {
-			select {
-			case <-poolStop:
-				return
-			default:
-				c, err := gConn.Fetch()
-				if err != nil {
-					fmt.Println("cannot get newAdd connection, ", err)
-					continue
-				}
-				pool <- *c
-				fmt.Printf("add connection id %s to pool.\n", c.Id.String())
-			}
-		}
-	}()
+	go fillPool()
+c:
+	if len(pool) < poolSize/2 {
+		fmt.Println("pool loading in process, it might takes a while")
+		<-time.Tick(time.Millisecond * 300)
+		goto c
+	}
+	fmt.Println("connection pool fill successfully")
 
 	for _, address := range viper.Get("GRPC").([]interface{}) {
 		ip := address.(map[string]interface{})["ip"]
@@ -153,4 +146,37 @@ func addServer(addServer chan server, removeServer chan server, newServer chan s
 		gLis:    rpcServer,
 	}
 	newServer <- address
+}
+
+func fillPool() {
+
+	var cancels []context.CancelFunc
+	count := 10
+	for i := 0; i < count; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ctx.Done():
+					fmt.Println("pool worker terminated")
+					return
+				default:
+					c, err := gConn.Fetch()
+					if err != nil {
+						fmt.Println("cannot get new connection, ", err)
+						continue
+					}
+					pool <- *c
+					fmt.Printf("add connection id %s to pool.\n", c.Id.String())
+				}
+			}
+		}(ctx)
+		cancels = append(cancels, cancel)
+	}
+
+	<-poolStop
+
+	for _, c := range cancels {
+		c()
+	}
 }

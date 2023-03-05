@@ -49,9 +49,9 @@ func (r *RestSide) Fetch() (*Connection, error) {
 	counter++
 	gConn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithTimeout(500*time.Millisecond))
 	if err != nil {
+		_ = client.Close()
 		return nil, fmt.Errorf(fmt.Sprintf("did not connect: %v", err))
 	}
-
 
 	writer := KafkaBroker.NewWriter(fmt.Sprintf("%s:%d", r.Writer.Ip, r.Writer.Port))
 

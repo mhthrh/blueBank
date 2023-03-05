@@ -54,26 +54,17 @@ func init() {
 	pool = make(chan Pool.Connection, poolSize)
 }
 func main() {
+
 	//Connection pool
-	for i := 0; i < 100; i++ {
-		go func() {
-			defer close(poolStop)
-			for {
-				select {
-				case <-poolStop:
-					return
-				default:
-					c, err := rConn.Fetch()
-					if err != nil {
-						fmt.Println("cannot get new connection, ", err)
-						continue
-					}
-					pool <- *c
-					fmt.Printf("add connection id %s to pool.\n", c.Id.String())
-				}
-			}
-		}()
+	go fillPool()
+c:
+	if len(pool) < poolSize/2 {
+		fmt.Println("pool loading in process, it might takes a while")
+		<-time.Tick(time.Millisecond * 300)
+		goto c
 	}
+	fmt.Println("connection pool fill successfully")
+
 	View.New(&pool)
 	serverSync := http.Server{
 		Addr:         fmt.Sprintf("%s:%d", "localhost", 8569),
@@ -138,4 +129,37 @@ func main() {
 
 	//release connections
 	rConn.Release(&pool)
+}
+
+func fillPool() {
+
+	var cancels []context.CancelFunc
+	count := 10
+	for i := 0; i < count; i++ {
+		ctx, cancel := context.WithCancel(context.Background())
+		go func(ctx context.Context) {
+			for {
+				select {
+				case <-ctx.Done():
+					fmt.Println("pool worker terminated")
+					return
+				default:
+					c, err := rConn.Fetch()
+					if err != nil {
+						fmt.Println("cannot get new connection, ", err)
+						continue
+					}
+					pool <- *c
+					fmt.Printf("add connection id %s to pool.\n", c.Id.String())
+				}
+			}
+		}(ctx)
+		cancels = append(cancels, cancel)
+	}
+
+	<-poolStop
+
+	for _, c := range cancels {
+		c()
+	}
 }
