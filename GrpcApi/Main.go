@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/mhthrh/BlueBank/Config"
+	"github.com/mhthrh/BlueBank/Db"
 	"github.com/mhthrh/BlueBank/GrpcApi/GrpcServer"
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoGateway"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoUser"
+	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"log"
@@ -73,6 +75,13 @@ c:
 	}
 	fmt.Println("connection pool fill successfully")
 
+	if err := CheckVersion(); err != nil {
+		poolStop <- struct{}{}
+		gConn.Release(&pool)
+		fmt.Println()
+		log.Fatal(err)
+	}
+
 	for _, address := range viper.Get("GRPC").([]interface{}) {
 		ip := address.(map[string]interface{})["ip"]
 		port := address.(map[string]interface{})["port"]
@@ -130,7 +139,11 @@ func addServer(addServer chan server, removeServer chan server, newServer chan s
 			UnimplementedGatewayServicesServer: ProtoGateway.UnimplementedGatewayServicesServer{},
 		},
 	)
-
+	ProtoVersion.RegisterVersionServicesServer(
+		rpcServer, &GrpcServer.VersionServer{
+			UnimplementedVersionServicesServer: ProtoVersion.UnimplementedVersionServicesServer{},
+		},
+	)
 	log.Printf("serving on %s\n", address)
 	addServer <- server{
 		address: address,
@@ -179,4 +192,23 @@ func fillPool() {
 	for _, c := range cancels {
 		c()
 	}
+}
+
+func CheckVersion() error {
+	p := <-pool
+	defer func() {
+		_ = p.Sql.Close()
+		_ = p.Redis.Close()
+	}()
+	db := Db.NewDb(p.Sql)
+	value, err := db.GetVersion(context.Background(), "GrpcVersion")
+	if err != nil {
+		return fmt.Errorf("version controller: canot connect to db,%w", err)
+	}
+
+	cnfgVersion := viper.GetString("GrpcVersion")
+	if cnfgVersion != value {
+		return fmt.Errorf("version controller: version mismatch, %s", fmt.Sprintf("config version is: %s and db version is %s", cnfgVersion, value))
+	}
+	return nil
 }

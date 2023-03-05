@@ -1,0 +1,15 @@
+syntax="proto3";
+
+option go_package = "bp.go/ProtoVersion";
+
+service VersionServices{
+  rpc GetVersion(VersionRequest)returns(VersionResponse){}
+}
+
+message VersionRequest{
+  string key=1;
+}
+
+message VersionResponse{
+  string value=1;
+}

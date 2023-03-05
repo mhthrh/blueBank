@@ -1,4 +1,5 @@
-Database_connection= postgres://postgres:123456@localhost:5432/blue_bank?sslmode=disable
+dbConnection= postgres://postgres:123456@localhost:5432/blue_bank?sslmode=disable
+outPutPath=C:\Users\Mohsen\Desktop\RunApp
 
 compose_up:
 	docker-compose up -d
@@ -16,10 +17,10 @@ drop_db:
 	docker exec -it postgres psql -U postgres -c "drop database blue_bank with (force)"
 
 migrate_up:
-	migrate -path Db/Migration -database "$(Database_connection)" -verbose up 2
+	migrate -path Db/Migration -database "$(dbConnection)" -verbose up 2
 
 migrate_down:
-	migrate -path Db/Migration -database "$(Database_connection)" -verbose down 1
+	migrate -path Db/Migration -database "$(dbConnection)" -verbose down 1
 
 migrate_command:
 	migrate create -ext sql -dir Db/Migration/ -seq initial
@@ -33,5 +34,8 @@ encrypt_config:
 go_test:
 	go test -v -cover ./Test/...
 
-curl_test:
-	cmd /C  curl/Post.bat
+build:
+	cd  "$(outPutPath)"
+	del "$(outPutPath)" *.exe
+	go build -o "$(outPutPath)"/GrpcServices.exe ./GrpcApi/main.go
+	go build -o "$(outPutPath)"/ApiGateway.exe ./ApiGateway/main.go

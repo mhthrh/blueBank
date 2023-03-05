@@ -7,7 +7,9 @@ import (
 	"github.com/mhthrh/BlueBank/ApiGateway/View"
 	"github.com/mhthrh/BlueBank/Config"
 	"github.com/mhthrh/BlueBank/Pool"
+	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc/status"
 	"log"
 	"net/http"
 	"os"
@@ -64,6 +66,13 @@ c:
 		goto c
 	}
 	fmt.Println("connection pool fill successfully")
+
+	if err := CheckVersion(); err != nil {
+		poolStop <- struct{}{}
+		rConn.Release(&pool)
+		fmt.Println()
+		log.Fatal(err)
+	}
 
 	View.New(&pool)
 	serverSync := http.Server{
@@ -162,4 +171,28 @@ func fillPool() {
 	for _, c := range cancels {
 		c()
 	}
+}
+
+func CheckVersion() error {
+	cnn := <-pool
+	defer func() {
+		cnn.Redis.Close()
+	}()
+	gCnn := ProtoVersion.NewVersionServicesClient(cnn.GrpcConnection)
+	result, stat := gCnn.GetVersion(context.Background(), &ProtoVersion.VersionRequest{
+		Key: "RestVersion",
+	})
+
+	st, ok := status.FromError(stat)
+	if !ok {
+		return fmt.Errorf("canot connect to grpc")
+	}
+	if st != nil {
+		return fmt.Errorf("canot catch version from grpc")
+	}
+	cnfgVersion := viper.GetString("ApiVersion")
+	if cnfgVersion != result.Value {
+		return fmt.Errorf("version mismatch, %s", fmt.Sprintf("config version is: %s and db version is %s", cnfgVersion, result.Value))
+	}
+	return nil
 }

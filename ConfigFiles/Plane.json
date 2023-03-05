@@ -1,7 +1,9 @@
 {
   "AppName": "BlueBank",
   "IsTest": true,
-  "Version": "1.0.0",
+  "ApiVersion": "1.0.0",
+  "GrpcVersion": "1.0.0",
+  "DispatcherVersion": "1.0.0",
   "ExpireDate": "01-01-2024",
   "ConnectionPoolCount": 100,
   "SyncListener": {
