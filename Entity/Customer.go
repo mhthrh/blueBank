@@ -18,4 +18,9 @@ type (
 		UserName string `json:"userName" validate:"required,alphanum"`
 		PassWord string `json:"passWord" validate:"required,printascii"`
 	}
+	CustomerLoginResponse struct {
+		UserName  string `json:"userName"`
+		Token     string `json:"token"`
+		ValidTill string `json:"valid-till"`
+	}
 )

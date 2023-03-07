@@ -16,8 +16,8 @@ func RunSync() http.Handler {
 	router.Use(gin.Recovery())
 
 	router.POST("/gateway/login", Controller.GatewaySignIn)
-	//router.POST("/user/signup", Controller.UserSignUp)
-	//router.POST("/user/signin", Controller.UserSignIn)
+	router.POST("/user/signup", Controller.UserSignUp)
+	router.POST("/user/signin", Controller.UserSignIn)
 	//router.GET("/version", Controller.Version)
 	//
 	//router.NoRoute(Controller.NotFound)

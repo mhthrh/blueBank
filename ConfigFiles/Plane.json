@@ -1,11 +1,13 @@
 {
   "AppName": "BlueBank",
   "IsTest": true,
-  "ApiVersion": "1.0.0",
+  "ApiVersion": "1.0.1",
   "GrpcVersion": "1.0.0",
   "DispatcherVersion": "1.0.0",
   "ExpireDate": "01-01-2024",
-  "ConnectionPoolCount": 100,
+  "ConnectionPoolCount": 5,
+  "SecretKey": "sabziPoloBaMahi(!?@)NetamShode3G",
+  "JWTDuration": "30h",
   "SyncListener": {
     "IP": "localhost",
     "Port": 8569

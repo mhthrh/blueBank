@@ -6,6 +6,7 @@ type Gateway struct {
 	Ips         string `json:"ips"`
 	GatewayName string `json:"gatewayName"`
 	Status      bool   `json:"status"`
+	Token       string `json:"token"`
 }
 type GatewayLogin struct {
 	UserName string `json:"userName" validate:"required,alphanum"`

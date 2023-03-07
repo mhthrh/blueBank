@@ -8,6 +8,9 @@ import (
 	"github.com/mhthrh/BlueBank/Entity"
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoGateway"
+	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoUser"
+	"github.com/mhthrh/BlueBank/Token"
+	"github.com/spf13/viper"
 	"google.golang.org/grpc/status"
 	"net/http"
 	"reflect"
@@ -56,15 +59,156 @@ func GatewaySignIn(ctx *gin.Context) {
 		ctx.JSON(http.StatusForbidden, st.Message())
 		return
 	}
+	token, err := Token.NewJwtMaker(viper.GetString("SecretKey"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	duration, err := time.ParseDuration(viper.GetString("JWTDuration"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := token.Create(gatewayLogin.UserName, duration)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	ctx.JSON(http.StatusOK, Entity.Gateway{
 		UserName:    result.UserName,
 		Password:    result.Password,
 		Ips:         result.Ips,
 		GatewayName: result.GetGatewayName(),
 		Status:      result.Status,
+		Token:       payload,
 	})
 }
 
+func UserSignUp(ctx *gin.Context) {
+
+	token, err := Token.NewJwtMaker(viper.GetString("SecretKey"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := token.Verify(ctx.GetHeader("Gateway_token"))
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, "check gateway token")
+		return
+	}
+
+	if payload.UserName != ctx.GetHeader("Gateway_User") {
+		ctx.JSON(http.StatusForbidden, "gateway user mismatch")
+		return
+	}
+	if time.Now().After(payload.ExpireAt) {
+		ctx.JSON(http.StatusForbidden, "token is expired")
+		return
+	}
+	var customer Entity.Customer
+	if err := ctx.BindJSON(&customer); err != nil {
+		s, responseError := errorType(err)
+		ctx.JSON(s, responseError.Error())
+		return
+	}
+	cnn := getConnection()
+	defer func() {
+		cnn.Redis.Close()
+		cnn.KafkaWriter.CloseWriter()
+	}()
+	if cnn == nil {
+		ctx.JSON(http.StatusInternalServerError, "cannot fetch connection from pool")
+		return
+	}
+	gCnn := ProtoUser.NewServicesClient(cnn.GrpcConnection)
+
+	_, stat := gCnn.CreateUser(context.Background(), &ProtoUser.UserRequest{
+		FullName: customer.FullName,
+		UserName: customer.UserName,
+		PassWord: customer.PassWord,
+		Email:    customer.Email,
+	})
+	st, ok := status.FromError(stat)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, "cannot call api")
+		return
+	}
+	if st != nil {
+		ctx.JSON(http.StatusForbidden, st.Message())
+		return
+	}
+	ctx.JSON(http.StatusOK, "create customer successfully")
+
+}
+func UserSignIn(ctx *gin.Context) {
+	token, err := Token.NewJwtMaker(viper.GetString("SecretKey"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	payload, err := token.Verify(ctx.GetHeader("Gateway_token"))
+	if err != nil {
+		ctx.JSON(http.StatusForbidden, "check gateway token")
+		return
+	}
+
+	if payload.UserName != ctx.GetHeader("Gateway_User") {
+		ctx.JSON(http.StatusForbidden, "gateway user mismatch")
+		return
+	}
+	if time.Now().After(payload.ExpireAt) {
+		ctx.JSON(http.StatusForbidden, "token is expired")
+		return
+	}
+	var customer Entity.CustomerLogin
+	if err := ctx.BindJSON(&customer); err != nil {
+		s, responseError := errorType(err)
+		ctx.JSON(s, responseError.Error())
+		return
+	}
+	cnn := getConnection()
+	defer func() {
+		cnn.Redis.Close()
+		cnn.KafkaWriter.CloseWriter()
+	}()
+	if cnn == nil {
+		ctx.JSON(http.StatusInternalServerError, "cannot fetch connection from pool")
+		return
+	}
+	gCnn := ProtoUser.NewServicesClient(cnn.GrpcConnection)
+	_, stat := gCnn.LoginUser(context.Background(), &ProtoUser.LoginRequest{
+		UserName: customer.UserName,
+		PassWord: customer.PassWord,
+	})
+	st, ok := status.FromError(stat)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, "cannot call api")
+		return
+	}
+	if st != nil {
+		ctx.JSON(http.StatusForbidden, st.Message())
+		return
+	}
+
+	duration, err := time.ParseDuration(viper.GetString("JWTDuration"))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	newPayload, err := token.Create(customer.UserName, duration)
+
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusOK, Entity.CustomerLoginResponse{
+		UserName:  customer.UserName,
+		Token:     newPayload,
+		ValidTill: time.Now().Add(duration).String(),
+	})
+}
 func errorType(e error) (int, error) {
 	var sb strings.Builder
 	switch reflect.TypeOf(e).String() {

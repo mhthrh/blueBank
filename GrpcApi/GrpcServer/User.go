@@ -32,7 +32,7 @@ func (s *UserServer) CreateUser(ctx context.Context, in *ProtoUser.UserRequest) 
 	})
 
 	if errG != nil {
-		return &ProtoUser.Error{Message: errG.Error()}, status.Errorf(codes.FailedPrecondition, "")
+		return &ProtoUser.Error{Message: errG.Error()}, status.Errorf(codes.FailedPrecondition, errG.Error())
 	}
 	return &ProtoUser.Error{Message: ""}, status.Errorf(codes.OK, "")
 

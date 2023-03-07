@@ -10,10 +10,10 @@ import (
 func (d *dataBase) Create(ctx context.Context, customer Entity.Customer) error {
 	cnt, err := d.Exist(ctx, customer.UserName)
 	if err != nil {
-		return errors.Wrap(err, "customer name problem")
+		return fmt.Errorf("customer name problem, %w", err)
 	}
 	if cnt != 0 {
-		return errors.Wrap(err, "userExist")
+		return fmt.Errorf("userExist, %w", err)
 	}
 	c.Text = customer.PassWord
 	result, err := d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.customers(full_name, user_name, hash_password, email)VALUES ('%s', '%s', '%s', '%s')", customer.FullName, customer.UserName, c.Sha256(), customer.Email))
@@ -30,16 +30,13 @@ func (d *dataBase) Create(ctx context.Context, customer Entity.Customer) error {
 func (d *dataBase) Login(ctx context.Context, login Entity.CustomerLogin) (*Entity.Customer, error) {
 	var customer Entity.Customer
 	c.Text = login.PassWord
-	rows, err := d.db.QueryContext(ctx, fmt.Sprintf("select id, full_name, user_name, email, expires_at, created_at FROM public.customers where user_name='%s' and hash_password='%s'", login.UserName, c.Sha256()))
+	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select id, full_name, user_name, email, expires_at, created_at FROM public.customers where user_name='%s' and hash_password='%s'", login.UserName, c.Sha256()))
+
+	err := row.Scan(&customer.ID, &customer.FullName, &customer.UserName, &customer.Email, &customer.CreateAt, &customer.ExpireAt)
 	if err != nil {
-		return nil, fmt.Errorf("db error, %w", err)
+		return nil, fmt.Errorf("userName/password incorect, %w", err)
 	}
-	for rows.Next() {
-		err = rows.Scan(&customer.ID, &customer.FullName, &customer.UserName, &customer.Email, &customer.CreateAt, &customer.ExpireAt)
-		if err != nil {
-			return nil, fmt.Errorf("db fetch error, %w", err)
-		}
-	}
+
 	_, err = d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.customer_log( user_name, status)VALUES ('%s', true)", login.UserName))
 	if err != nil {
 		return nil, fmt.Errorf("db.user_log insert error, %w", err)
