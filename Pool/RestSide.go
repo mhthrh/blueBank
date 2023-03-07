@@ -54,7 +54,6 @@ func (r *RestSide) Fetch() (*Connection, error) {
 	}
 
 	writer := KafkaBroker.NewWriter(fmt.Sprintf("%s:%d", r.Writer.Ip, r.Writer.Port))
-
 	c := Connection{
 		Id:             uuid.New(),
 		GrpcConnection: gConn,

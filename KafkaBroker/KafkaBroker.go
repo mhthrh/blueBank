@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/segmentio/kafka-go"
+	"net"
+	"strconv"
 	"time"
 )
 
@@ -35,15 +37,16 @@ func NewReader(address []string, topic, groupID string) *Reader {
 
 }
 
-func (r *Reader) Read(ctx context.Context, message chan Message, errChan chan error) {
+func (r *Reader) Read(ctx context.Context, message *chan Message, errChan *chan error) {
 
 	for {
 		m, err := r.connection.ReadMessage(ctx)
 		if err != nil {
-			errChan <- err
+
+			*errChan <- err
 			return
 		}
-		message <- Message{
+		*message <- Message{
 			Topic:    m.Topic,
 			Key:      string(m.Key),
 			Value:    string(m.Value),
@@ -83,4 +86,34 @@ func (w *Writer) Write(msg ...Message) error {
 }
 func (w *Writer) CloseWriter() error {
 	return w.Connection.Close()
+}
+func CreateTopic(address, topic string) error {
+	conn, err := kafka.Dial("tcp", address)
+	if err != nil {
+		return fmt.Errorf("cannot connect to kafka server, %w", err)
+	}
+	defer conn.Close()
+	controller, err := conn.Controller()
+	if err != nil {
+		return fmt.Errorf("cannot connect to kafka controller, %w", err)
+	}
+	var controllerConn *kafka.Conn
+	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
+	if err != nil {
+		return fmt.Errorf("cannot dial with kafka controller, %w", err)
+	}
+	defer controllerConn.Close()
+	topicConfigs := []kafka.TopicConfig{
+		{
+			Topic:             topic,
+			NumPartitions:     1,
+			ReplicationFactor: 1,
+		},
+	}
+
+	err = controllerConn.CreateTopics(topicConfigs...)
+	if err != nil {
+		return fmt.Errorf("cannot create topic %s with kafka controller, %w", topic, err)
+	}
+	return nil
 }

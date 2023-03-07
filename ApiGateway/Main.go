@@ -76,7 +76,7 @@ c:
 
 	View.New(&pool)
 	serverSync := http.Server{
-		Addr:         fmt.Sprintf("%s:%d", "localhost", 8569),
+		Addr:         fmt.Sprintf("%s:%d", viper.GetString("SyncListener.IP"), viper.GetInt("SyncListener.Port")),
 		Handler:      View.RunSync(),
 		TLSConfig:    nil,
 		ReadTimeout:  readTimeOut,
@@ -84,7 +84,7 @@ c:
 		IdleTimeout:  idleTimeOut,
 	}
 	serverAsync := http.Server{
-		Addr:         fmt.Sprintf("%s:%d", "localhost", 8570),
+		Addr:         fmt.Sprintf("%s:%d", viper.GetString("AsyncListener.IP"), viper.GetInt("AsyncListener.Port")),
 		Handler:      View.RunAsync(),
 		TLSConfig:    nil,
 		ReadTimeout:  readTimeOut,
