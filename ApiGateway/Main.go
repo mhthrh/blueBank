@@ -21,7 +21,6 @@ const (
 	readTimeOut  = 10 * time.Second
 	WriteTimeOut = 10 * time.Second
 	idleTimeOut  = 180 * time.Second
-	poolCount    = 5
 )
 
 var (
