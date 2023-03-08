@@ -2,6 +2,7 @@ package Controller
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -12,6 +13,7 @@ import (
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoGateway"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoUser"
+	"github.com/mhthrh/BlueBank/Redis"
 	"github.com/mhthrh/BlueBank/Token"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc/status"
@@ -225,7 +227,7 @@ func UserSignIn(ctx *gin.Context) {
 		ValidTill: time.Now().Add(duration).String(),
 	})
 }
-func SocketApis(ctx *gin.Context) {
+func Websocket(ctx *gin.Context) {
 	authenticates = append(authenticates, authenticate{
 		module:  "Gateway",
 		user:    ctx.GetHeader("Gateway_User"),
@@ -241,7 +243,7 @@ func SocketApis(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-
+	var durations []time.Duration
 	for _, aut := range authenticates {
 		payload, err := token.Verify(aut.payload)
 		if err != nil {
@@ -256,17 +258,22 @@ func SocketApis(ctx *gin.Context) {
 			ctx.JSON(http.StatusForbidden, "token is expired")
 			return
 		}
+
+		durations = append(durations, payload.ExpireAt.Sub(time.Now()))
 	}
 	w, r := ctx.Writer, ctx.Request
 	upgrade.CheckOrigin = func(r *http.Request) bool {
 		return true
 	}
-	c, err := upgrade.Upgrade(w, r, nil)
+	wsConnection, err := upgrade.Upgrade(w, r, nil)
 	if err != nil {
 		ctx.JSON(http.StatusUpgradeRequired, "connote upgrade connection to websocket")
 		return
 	}
-	go newSocketProcess(context.Background(), c, ctx.GetHeader("User_User"))
+	contextUser, _ := context.WithTimeout(context.Background(), durations[0])
+	contextGateway, _ := context.WithTimeout(contextUser, durations[1])
+
+	go newSocketProcess(contextGateway, wsConnection, ctx.GetHeader("User_User"))
 }
 
 func errorType(e error) (int, error) {
@@ -353,17 +360,56 @@ func newSocketProcess(ctx context.Context, c *websocket.Conn, userName string) {
 		case <-ctx.Done():
 			return
 		case msg := <-messageFromWs:
-			uId, _ := uuid.NewRandom()
-			err := cnn.KafkaWriter.Write(KafkaBroker.Message{
+			var wsMessage Entity.WebsocketMessageRequest
+			err := json.Unmarshal([]byte(msg), &wsMessage)
+			if err != nil {
+				bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
+					Id:       uuid.UUID{},
+					DateTime: time.Now(),
+					Status:   "rejected",
+					Reason:   err.Error(),
+				})
+				messageToWs <- string(bytes)
+				continue
+			}
+			_ = cnn.Redis.Do("SELECT", "1")
+
+			client := Redis.Client{Client: cnn.Redis}
+			count, _ := client.KeyExist(wsMessage.Id.String())
+			if count > 0 {
+				bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
+					Id:       uuid.UUID{},
+					DateTime: time.Now(),
+					Status:   "rejected",
+					Reason:   "duplicate",
+				})
+				messageToWs <- string(bytes)
+				continue
+			}
+			_ = client.Set(wsMessage.Id.String(), "")
+			err = cnn.KafkaWriter.Write(KafkaBroker.Message{
 				Topic:    "myTopic",
-				Key:      uId.String(),
+				Key:      wsMessage.Id.String(),
 				Value:    msg,
 				MetaData: nil,
 			})
 			if err != nil {
-				errorQueue <- err
+				bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
+					Id:       wsMessage.Id,
+					DateTime: time.Now(),
+					Status:   "rejected",
+					Reason:   err.Error(),
+				})
+				messageToWs <- string(bytes)
+				continue
 			}
-			messageToWs <- "successfully"
+			bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
+				Id:       wsMessage.Id,
+				DateTime: time.Now(),
+				Status:   "received",
+				Reason:   "",
+			})
+			messageToWs <- string(bytes)
 		case msg := <-messageFromQueue:
 			messageToWs <- msg.Value
 		case <-errorQueue:

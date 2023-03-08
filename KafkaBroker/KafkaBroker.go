@@ -42,7 +42,6 @@ func (r *Reader) Read(ctx context.Context, message *chan Message, errChan *chan 
 	for {
 		m, err := r.connection.ReadMessage(ctx)
 		if err != nil {
-
 			*errChan <- err
 			return
 		}
