@@ -2,6 +2,7 @@ package GrpcServer
 
 import (
 	"github.com/mhthrh/BlueBank/Pool"
+	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoAccount"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoGateway"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoUser"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
@@ -20,6 +21,9 @@ type GatewayServer struct {
 
 type VersionServer struct {
 	ProtoVersion.UnimplementedVersionServicesServer
+}
+type AccountServer struct {
+	ProtoAccount.UnimplementedAccountServicesServer
 }
 
 func New(p *chan Pool.Connection) {

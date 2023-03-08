@@ -24,8 +24,13 @@ func (d *dataBase) CreateAccount(ctx context.Context, account Entity.Account) er
 	if err != nil {
 		return fmt.Errorf("cannot find customer")
 	}
+	accNo, err := d.generateAccountNumber(ctx)
+	if err != nil {
+		return err
+	}
+	account.AccountNumber = accNo
 
-	result, err := d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.accounts(customer_id, account_no, balance,balance_lock)VALUES ('%d', '%d', '%d','%d')", userId, account.AccountNumber, account.Balance, account.LockAmount))
+	result, err := d.db.ExecContext(ctx, fmt.Sprintf("INSERT INTO public.accounts(customer_id, account_no, balance,balance_lock)VALUES ('%d', '%s', '%d','%d')", userId, account.AccountNumber, account.Balance, account.LockAmount))
 	if err != nil {
 		return errors.Wrap(err, "cannot insert to db.accounts, ")
 	}
@@ -37,12 +42,18 @@ func (d *dataBase) CreateAccount(ctx context.Context, account Entity.Account) er
 	return nil
 }
 func (d *dataBase) BalanceAccount(ctx context.Context, account Entity.Account) (int64, error) {
-	var balance int64
-	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select balance FROM public.accounts where account_no='%d'", account.AccountNumber))
-
-	err := row.Scan(&balance)
+	var userId int64
+	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select id from public.customers where user_name='%s'", account.CustomerUserName))
+	err := row.Scan(&userId)
 	if err != nil {
-		return 0, fmt.Errorf("db fetch error, %w", err)
+		return 0, fmt.Errorf("cannot find customer")
+	}
+	var balance int64
+	row = d.db.QueryRowContext(ctx, fmt.Sprintf("select balance FROM public.accounts where account_no='%s' and customer_id='%d'", account.AccountNumber, userId))
+
+	err = row.Scan(&balance)
+	if err != nil {
+		return 0, fmt.Errorf("account not found, %w", err)
 	}
 
 	return balance, nil
@@ -78,7 +89,7 @@ func (d *dataBase) LockAmount(ctx context.Context, account Entity.Account) (e er
 func (d *dataBase) ExistAccount(ctx context.Context, account Entity.Account) (int, error) {
 
 	var count int
-	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select count(*) FROM public.accounts where account_no='%d'", account.AccountNumber))
+	row := d.db.QueryRowContext(ctx, fmt.Sprintf("select count(*) FROM public.accounts where account_no='%s'", account.AccountNumber))
 
 	err := row.Scan(&count)
 	if err != nil {
@@ -86,4 +97,14 @@ func (d *dataBase) ExistAccount(ctx context.Context, account Entity.Account) (in
 	}
 
 	return count, nil
+}
+
+func (d *dataBase) generateAccountNumber(c context.Context) (string, error) {
+	var account string
+	row := d.db.QueryRowContext(c, "SELECT nextval('Seq_Account')")
+	err := row.Scan(&account)
+	if err != nil {
+		return "", fmt.Errorf("cannot generate account")
+	}
+	return fmt.Sprintf("%016s", account), nil
 }

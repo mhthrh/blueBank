@@ -12,3 +12,7 @@ VALUES (3, 'company3', '927258103250a45487396663c039438732391ab8e843961ae0470d00
 
 INSERT INTO "config"(key, value)VALUES ('GrpcVersion', '1.0.0');
 INSERT INTO "config"(key, value)VALUES ('RestVersion', '1.0.1');
+
+CREATE SEQUENCE Seq_Account
+    INCREMENT 5
+    START 100;

@@ -4,7 +4,7 @@ import "time"
 
 type Account struct {
 	CustomerUserName string
-	AccountNumber    int64
+	AccountNumber    string
 	Balance          int64
 	LockAmount       int64
 	CreateAt         time.Time

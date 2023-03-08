@@ -245,6 +245,7 @@ func Websocket(ctx *gin.Context) {
 	}
 	var durations []time.Duration
 	for _, aut := range authenticates {
+
 		payload, err := token.Verify(aut.payload)
 		if err != nil {
 			ctx.JSON(http.StatusForbidden, fmt.Sprintf("check %s token", aut.module))

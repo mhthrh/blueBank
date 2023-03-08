@@ -26,7 +26,7 @@ func RunSync() http.Handler {
 func RunAsync() http.Handler {
 	router := gin.New()
 	router.Use(gin.Recovery())
-	router.GET("/banking/socketApis", Controller.Websocket)
+	router.GET("/banking/ws", Controller.Websocket)
 	router.NoRoute(Controller.NotFound)
 
 	return router

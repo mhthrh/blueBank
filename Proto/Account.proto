@@ -1,0 +1,25 @@
+syntax="proto3";
+
+option go_package = "bp.go/ProtoAccount";
+
+service AccountServices{
+  rpc Create(CreateRequest)returns(CreateResponse){}
+  rpc Balance(BalanceRequest)returns(BalanceResponse){}
+}
+
+message CreateRequest{
+  string UserName =1;
+}
+
+message CreateResponse{
+  string Error=1;
+}
+
+message BalanceRequest{
+  string UserName=1;
+  string AccountNumber=2;
+}
+
+message BalanceResponse{
+  float Balance=1;
+}

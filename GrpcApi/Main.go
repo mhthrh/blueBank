@@ -7,6 +7,7 @@ import (
 	"github.com/mhthrh/BlueBank/Db"
 	"github.com/mhthrh/BlueBank/GrpcApi/GrpcServer"
 	"github.com/mhthrh/BlueBank/Pool"
+	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoAccount"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoGateway"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoUser"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
@@ -142,6 +143,11 @@ func addServer(addServer chan server, removeServer chan server, newServer chan s
 	ProtoVersion.RegisterVersionServicesServer(
 		rpcServer, &GrpcServer.VersionServer{
 			UnimplementedVersionServicesServer: ProtoVersion.UnimplementedVersionServicesServer{},
+		},
+	)
+	ProtoAccount.RegisterAccountServicesServer(
+		rpcServer, &GrpcServer.AccountServer{
+			UnimplementedAccountServicesServer: ProtoAccount.UnimplementedAccountServicesServer{},
 		},
 	)
 	log.Printf("serving on %s\n", address)
