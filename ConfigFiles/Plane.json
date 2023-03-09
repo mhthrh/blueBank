@@ -50,6 +50,16 @@
     "password": "",
     "database": 0
   },
+  "Topics": [
+    {
+      "name": "Accounts",
+      "partitions": 10
+    },
+    {
+      "name": "Transaction",
+      "partitions": 15
+    }
+  ],
   "GRPC": [
     {
       "IP": "localhost",

@@ -39,3 +39,4 @@ build:
 	del "$(outPutPath)" *.exe
 	go build -o "$(outPutPath)"/GrpcServices.exe ./GrpcApi/main.go
 	go build -o "$(outPutPath)"/ApiGateway.exe ./ApiGateway/main.go
+	go build -o "$(outPutPath)"/Dispatcher.exe ./Dispatcher/main.go

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/mhthrh/BlueBank/ApiGateway/View"
 	"github.com/mhthrh/BlueBank/Config"
+	"github.com/mhthrh/BlueBank/KafkaBroker"
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
 	"github.com/spf13/viper"
@@ -71,6 +72,19 @@ c:
 		rConn.Release(&pool)
 		fmt.Println()
 		log.Fatal(err)
+	}
+	//create kafka topics
+	for _, address := range viper.Get("Topics").([]interface{}) {
+		topic := address.(map[string]interface{})["name"].(string)
+		partition := address.(map[string]interface{})["partitions"].(float64)
+		address := fmt.Sprintf("%s:%d", viper.GetString("Kafka.Host"), viper.GetInt("Kafka.Port"))
+
+		if err := KafkaBroker.CreateTopic(address, topic, int(partition)); err != nil {
+			poolStop <- struct{}{}
+			rConn.Release(&pool)
+			fmt.Println()
+			log.Fatal(err)
+		}
 	}
 
 	View.New(&pool)

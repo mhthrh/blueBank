@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/mhthrh/BlueBank/Config"
+	"github.com/mhthrh/BlueBank/Dispatcher/Function"
+	"github.com/mhthrh/BlueBank/Entity"
 	"github.com/mhthrh/BlueBank/KafkaBroker"
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/spf13/viper"
@@ -22,7 +25,7 @@ var (
 )
 
 func init() {
-	methods = []string{"account", "transaction"}
+
 	osInterrupt = make(chan os.Signal)
 	poolStop = make(chan struct{})
 	cfg := Config.New("Coded.dat", "json", "./ConfigFiles")
@@ -35,6 +38,10 @@ func init() {
 	}, viper.Get("GRPC").([]interface{}),
 	)
 
+	for _, address := range viper.Get("Topics").([]interface{}) {
+		topic := address.(map[string]interface{})["name"].(string)
+		methods = append(methods, topic)
+	}
 	poolSize = viper.GetInt("ConnectionPoolCount")
 	pool = make(chan Pool.Connection, poolSize)
 }
@@ -49,13 +56,17 @@ c:
 		goto c
 	}
 	fmt.Println("connection pool fill successfully")
+
 	for _, s := range methods {
 		ctx, can := context.WithCancel(context.Background())
 		dispatch(ctx, s)
 		cancels = append(cancels, can)
 	}
+
 	<-osInterrupt
+
 	fmt.Println(fmt.Sprintf("server will be down, because: %s", "got intrrupt"))
+
 	for _, cancel := range cancels {
 		cancel()
 	}
@@ -69,12 +80,11 @@ c:
 
 func dispatch(ctx context.Context, topic string) {
 	kafkaChan := make(chan KafkaBroker.Message)
-	reader := KafkaBroker.NewReader([]string{"localhost:9092"}, topic, "groupId-1")
+	reader := KafkaBroker.NewReader([]string{"localhost:9092"}, topic, "groupId-2")
 	go reader.Read(context.Background(), &kafkaChan, nil)
-	cnn := <-pool
+
 	defer func() {
 		_ = reader.CloseReader()
-		_ = cnn.KafkaWriter.CloseWriter()
 		close(kafkaChan)
 	}()
 
@@ -83,7 +93,15 @@ func dispatch(ctx context.Context, topic string) {
 		case <-ctx.Done():
 			return
 		case msg := <-kafkaChan:
-			fmt.Println(msg)
+			var message Entity.WebsocketMessageRequest
+			_ = json.Unmarshal([]byte(msg.Value), &message)
+			Function.New(<-pool, message)
+			fnc, ok := Function.Functions[fmt.Sprintf("%s,%s", message.Category, message.Method)]
+			if !ok {
+				Function.NotFound()
+				continue
+			}
+			go fnc()
 		}
 	}
 }

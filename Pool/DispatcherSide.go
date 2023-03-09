@@ -15,8 +15,8 @@ type DispatchSide struct {
 
 func NewDispatchSide(kafkaWriter KafkaAddress, grpcAddress []interface{}) IConnection {
 	return &DispatchSide{
-		GrpcAddress: nil,
-		Writer:      KafkaAddress{},
+		GrpcAddress: grpcAddress,
+		Writer:      kafkaWriter,
 	}
 }
 

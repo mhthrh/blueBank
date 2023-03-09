@@ -7,6 +7,8 @@ import (
 
 type WebsocketMessageRequest struct {
 	Id       uuid.UUID   `json:"id"`
+	UserName string      `json:"userName"`
+	Category string      `json:"category"`
 	Method   string      `json:"method"`
 	DateTime string      `json:"dateTime"`
 	Gateway  string      `json:"gateway"`

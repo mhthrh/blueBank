@@ -3,9 +3,9 @@ package Entity
 import "time"
 
 type Account struct {
-	CustomerUserName string
-	AccountNumber    string
-	Balance          int64
-	LockAmount       int64
-	CreateAt         time.Time
+	CustomerUserName string    `json:"customerUserName"`
+	AccountNumber    string    `json:"accountNumber"`
+	Balance          int64     `json:"balance"`
+	LockAmount       int64     `json:"lockAmount"`
+	CreateAt         time.Time `json:"createAt"`
 }

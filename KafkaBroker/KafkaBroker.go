@@ -86,7 +86,7 @@ func (w *Writer) Write(msg ...Message) error {
 func (w *Writer) CloseWriter() error {
 	return w.Connection.Close()
 }
-func CreateTopic(address, topic string) error {
+func CreateTopic(address, topic string, partition int) error {
 	conn, err := kafka.Dial("tcp", address)
 	if err != nil {
 		return fmt.Errorf("cannot connect to kafka server, %w", err)
@@ -105,7 +105,7 @@ func CreateTopic(address, topic string) error {
 	topicConfigs := []kafka.TopicConfig{
 		{
 			Topic:             topic,
-			NumPartitions:     1,
+			NumPartitions:     partition,
 			ReplicationFactor: 1,
 		},
 	}

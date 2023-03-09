@@ -27,6 +27,7 @@ var (
 	pool          *chan Pool.Connection
 	authenticates []authenticate
 	upgrade       websocket.Upgrader
+	methods       map[string]bool
 )
 
 type authenticate struct {
@@ -36,9 +37,16 @@ type authenticate struct {
 }
 
 func init() {
+	methods = make(map[string]bool)
 	upgrade = websocket.Upgrader{}
 }
 func New(t *chan Pool.Connection) {
+	fff := viper.Get("Topics")
+	print(fff)
+	for _, address := range viper.Get("Topics").([]interface{}) {
+		topic := address.(map[string]interface{})["name"].(string)
+		methods[topic] = true
+	}
 	pool = t
 }
 
@@ -155,7 +163,7 @@ func UserSignUp(ctx *gin.Context) {
 		return
 	}
 
-	_ = KafkaBroker.CreateTopic("localhost:9092", customer.UserName)
+	_ = KafkaBroker.CreateTopic("localhost:9092", customer.UserName, 1)
 
 	ctx.JSON(http.StatusOK, "create customer successfully")
 
@@ -362,6 +370,7 @@ func newSocketProcess(ctx context.Context, c *websocket.Conn, userName string) {
 			return
 		case msg := <-messageFromWs:
 			var wsMessage Entity.WebsocketMessageRequest
+
 			err := json.Unmarshal([]byte(msg), &wsMessage)
 			if err != nil {
 				bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
@@ -373,6 +382,18 @@ func newSocketProcess(ctx context.Context, c *websocket.Conn, userName string) {
 				messageToWs <- string(bytes)
 				continue
 			}
+			wsMessage.UserName = userName
+			if !methods[wsMessage.Category] {
+				bytes, _ := json.Marshal(Entity.WebsocketMessageResponse{
+					Id:       wsMessage.Id,
+					DateTime: time.Now(),
+					Status:   "rejected",
+					Reason:   "method not found",
+				})
+				messageToWs <- string(bytes)
+				continue
+			}
+
 			_ = cnn.Redis.Do("SELECT", "1")
 
 			client := Redis.Client{Client: cnn.Redis}
@@ -388,10 +409,11 @@ func newSocketProcess(ctx context.Context, c *websocket.Conn, userName string) {
 				continue
 			}
 			_ = client.Set(wsMessage.Id.String(), "")
+			byt, _ := json.Marshal(&wsMessage)
 			err = cnn.KafkaWriter.Write(KafkaBroker.Message{
-				Topic:    "myTopic",
+				Topic:    wsMessage.Category,
 				Key:      wsMessage.Id.String(),
-				Value:    msg,
+				Value:    string(byt),
 				MetaData: nil,
 			})
 			if err != nil {
