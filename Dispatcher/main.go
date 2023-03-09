@@ -95,7 +95,7 @@ func dispatch(ctx context.Context, topic string) {
 		case msg := <-kafkaChan:
 			var message Entity.WebsocketMessageRequest
 			_ = json.Unmarshal([]byte(msg.Value), &message)
-			Function.New(<-pool, message)
+			Function.New(<-pool, message) //?
 			fnc, ok := Function.Functions[fmt.Sprintf("%s,%s", message.Category, message.Method)]
 			if !ok {
 				Function.NotFound()
