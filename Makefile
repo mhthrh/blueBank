@@ -1,5 +1,5 @@
 dbConnection= postgres://postgres:123456@localhost:5432/blue_bank?sslmode=disable
-outPutPath=C:\Users\Mohsen\Desktop\RunApp
+outPutPath=/home/mohsen/Run/
 
 compose_up:
 	docker-compose up -d
@@ -35,8 +35,6 @@ go_test:
 	go test -v -cover ./Test/...
 
 build:
-	cd  "$(outPutPath)"
-	del "$(outPutPath)" *.exe
-	go build -o "$(outPutPath)"/GrpcServices.exe ./GrpcApi/main.go
-	go build -o "$(outPutPath)"/ApiGateway.exe ./ApiGateway/main.go
-	go build -o "$(outPutPath)"/Dispatcher.exe ./Dispatcher/main.go
+	GOARCH=amd64 GOOS=linux go build  -o $(outPutPath)GrpcServices ./GrpcApi/Main.go
+	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)ApiGateway ./ApiGateway/Main.go
+	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)ispatcher ./Dispatcher/main.go
