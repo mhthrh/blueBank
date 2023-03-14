@@ -12,4 +12,5 @@ https://github.com/golang-migrate/migrate/blob/master/cmd/migrate/README.md
 
 
 Go 1.2.2
+
 kafka: 3.4.0
