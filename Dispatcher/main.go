@@ -9,6 +9,7 @@ import (
 	"github.com/mhthrh/BlueBank/Entity"
 	"github.com/mhthrh/BlueBank/KafkaBroker"
 	"github.com/mhthrh/BlueBank/Pool"
+	"github.com/mhthrh/BlueBank/Utils/ConsoleUtil"
 	"github.com/spf13/viper"
 	"log"
 	"os"
@@ -25,7 +26,7 @@ var (
 )
 
 func init() {
-
+	ConsoleUtil.SetConsoleTitle("Dispatcher")
 	osInterrupt = make(chan os.Signal)
 	poolStop = make(chan struct{})
 	cfg := Config.New("Coded.dat", "json", "./ConfigFiles")
