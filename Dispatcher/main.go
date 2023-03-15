@@ -10,6 +10,7 @@ import (
 	"github.com/mhthrh/BlueBank/KafkaBroker"
 	"github.com/mhthrh/BlueBank/Pool"
 	"github.com/mhthrh/BlueBank/Utils/ConsoleUtil"
+	"github.com/mhthrh/BlueBank/Version"
 	"github.com/spf13/viper"
 	"log"
 	"os"
@@ -57,7 +58,12 @@ c:
 		goto c
 	}
 	fmt.Println("connection pool fill successfully")
-
+	if err := Version.CheckVersion(<-pool, "ApiVersion"); err != nil {
+		poolStop <- struct{}{}
+		dConn.Release(&pool)
+		fmt.Println()
+		log.Fatal(err)
+	}
 	for _, s := range methods {
 		ctx, can := context.WithCancel(context.Background())
 		dispatch(ctx, s)

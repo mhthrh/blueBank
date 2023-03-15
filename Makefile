@@ -35,6 +35,6 @@ go_test:
 	go test -v -cover ./Test/...
 
 build:
-	GOARCH=amd64 GOOS=linux go build  -o $(outPutPath)GrpcServices ./GrpcApi/Main.go
+	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)GrpcServices ./GrpcApi/Main.go
 	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)ApiGateway ./ApiGateway/Main.go
-	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)ispatcher ./Dispatcher/main.go
+	GOARCH=amd64 GOOS=linux go build -o $(outPutPath)Dispatcher ./Dispatcher/main.go

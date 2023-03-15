@@ -8,9 +8,8 @@ import (
 	"github.com/mhthrh/BlueBank/Config"
 	"github.com/mhthrh/BlueBank/KafkaBroker"
 	"github.com/mhthrh/BlueBank/Pool"
-	"github.com/mhthrh/BlueBank/Proto/bp.go/ProtoVersion"
+	"github.com/mhthrh/BlueBank/Version"
 	"github.com/spf13/viper"
-	"google.golang.org/grpc/status"
 	"log"
 	"net/http"
 	"os"
@@ -56,7 +55,14 @@ func init() {
 	pool = make(chan Pool.Connection, poolSize)
 }
 func main() {
-
+	//check another instance on same port
+	address := []string{
+		fmt.Sprintf("%s:%d", viper.GetString("SyncListener.IP"), viper.GetInt("SyncListener.Port")),
+		fmt.Sprintf("%s:%d", viper.GetString("AsyncListener.IP"), viper.GetInt("AsyncListener.Port")),
+	}
+	if err := Version.CheckInstance(address...); err != nil {
+		log.Fatalf("another version/application listen on same port, %v", err)
+	}
 	//Connection pool
 	go fillPool()
 c:
@@ -67,7 +73,7 @@ c:
 	}
 	fmt.Println("connection pool fill successfully")
 
-	if err := CheckVersion(); err != nil {
+	if err := Version.CheckVersion(<-pool, "ApiVersion"); err != nil {
 		poolStop <- struct{}{}
 		rConn.Release(&pool)
 		fmt.Println()
@@ -184,28 +190,4 @@ func fillPool() {
 	for _, c := range cancels {
 		c()
 	}
-}
-
-func CheckVersion() error {
-	cnn := <-pool
-	defer func() {
-		cnn.Redis.Close()
-	}()
-	gCnn := ProtoVersion.NewVersionServicesClient(cnn.GrpcConnection)
-	result, stat := gCnn.GetVersion(context.Background(), &ProtoVersion.VersionRequest{
-		Key: "RestVersion",
-	})
-
-	st, ok := status.FromError(stat)
-	if !ok {
-		return fmt.Errorf("canot connect to grpc")
-	}
-	if st != nil {
-		return fmt.Errorf("canot catch version from grpc")
-	}
-	cnfgVersion := viper.GetString("ApiVersion")
-	if cnfgVersion != result.Value {
-		return fmt.Errorf("version mismatch, %s", fmt.Sprintf("config version is: %s and db version is %s", cnfgVersion, result.Value))
-	}
-	return nil
 }
