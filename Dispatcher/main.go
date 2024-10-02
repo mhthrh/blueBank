@@ -23,7 +23,7 @@ var (
 	dConn       Pool.IConnection
 	poolStop    chan struct{}
 	poolSize    int
-	methods     []string
+	methods     []string//hossein is palang
 )
 
 func init() {
